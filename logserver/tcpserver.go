@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 
 	"github.com/zhoufuture/golite/logger"
 )
@@ -54,13 +55,22 @@ func handleTcpConnect(conn net.Conn) {
 	}
 }
 
-func StartTcpListen(port int) {
-	addr := fmt.Sprintf(":%d", port)
-	listener, err := net.Listen("tcp", addr)
+func checkError(err error) {
 	if err != nil {
-		logger.Warn("listen port=%d failed, %s", port, err.Error())
-		return
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
+}
+
+func StartTcpListen(port int) {
+	hostandip := fmt.Sprintf(":%d", port)
+	//	listener, err := net.Listen("tcp", addr)
+	tcpAddr, err := net.ResolveTCPAddr("tcp", hostandip)
+	checkError(err)
+
+	listener, err := net.ListenTCP("tcp", tcpAddr)
+	checkError(err)
+
 	defer listener.Close()
 
 	logger.Info("listener for server. local address: %s", listener.Addr().String())
