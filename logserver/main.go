@@ -1,50 +1,41 @@
 package main
 
 import (
-	"encoding/json"
 	"os"
 
 	"github.com/zhoufuture/golite/config"
-	"github.com/zhoufuture/golite/logger"
+	"github.com/zhoufuture/golite/util"
 )
 
 var (
-	g_tcpPort     int
-	g_udpPort     int
-	g_tcpfilepath string
-	g_udpfilepath string
-	g_fileLog     *logger.Logger
+	TcpFileWrite *FileWriter
+	UdpFileWrite *FileWriter
 )
 
-func init() {
+func main() {
 	iniconf, err := config.NewConfig(config.IniProtocol, "config.ini")
 	if err != nil {
 		os.Exit(-1)
 	}
 
-	g_tcpPort, _ = iniconf.GetInt("logserver.tcpport", 30000)
-	g_udpPort, _ = iniconf.GetInt("logserver.udpport", 40000)
-	g_tcpfilepath = iniconf.GetString("logserver.tcpfilepath", "data/tcplog/log")
-	g_udpfilepath = iniconf.GetString("logserver.udpfilepath", "data/udplog/log")
+	nettype := iniconf.GetString("logserver.nettype", "udp")
+	tcpPort, _ := iniconf.GetInt("logserver.tcpport", 10000)
+	udpPort, _ := iniconf.GetInt("logserver.udpport", 20000)
+	tcpfilepath := iniconf.GetString("logserver.tcpfilepath", "/data/tcplog")
+	udpfilepath := iniconf.GetString("logserver.udpfilepath", "/data/udplog")
 
-	g_fileLog = logger.NewLogger(10000)
+	if nettype == "tcp" || nettype == "all" {
+		TcpFileWrite, err = NewFileWriter(tcpfilepath)
+		util.CheckError(err)
+		go StartTcpListen(tcpPort)
+	}
 
-	var fileconf logger.FileLogConfig
-	fileconf.FileName = g_tcpfilepath
-	fileconf.LogFlag = 0
-	fileconf.MaxDays = 7
-	fileconf.MaxSize = 1 << 30
-	fileconfbuf, _ := json.Marshal(fileconf)
-	g_fileLog.SetLogger(logger.FILE_PROTOCOL_LOG, string(fileconfbuf))
+	if nettype == "udp" || nettype == "all" {
+		UdpFileWrite, err = NewFileWriter(udpfilepath)
+		util.CheckError(err)
+		go StartUdpListen(udpPort)
+	}
 
-	g_fileLog.SetFuncCallDepth(0)
-	g_fileLog.SetEnableFuncCall(false)
-	g_fileLog.SetLogLevel(logger.LevelNormal)
-	g_fileLog.Async()
-}
-
-func main() {
-
-	StartTcpListen(g_tcpPort)
-	//StartUdpListen(g_udpport)
+	waiting := make(chan byte)
+	<-waiting
 }

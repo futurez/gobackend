@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 
 	"github.com/zhoufuture/golite/logger"
+	"github.com/zhoufuture/golite/util"
 )
 
 func checkPacket(buf []byte) ([]byte, bool) {
@@ -30,14 +30,11 @@ func checkPacket(buf []byte) ([]byte, bool) {
 
 func handleTcpConnect(conn net.Conn) {
 	defer conn.Close()
-
-	var dataBuf bytes.Buffer
-	buf := make([]byte, 2048)
 	for {
-		//		conn.SetDeadline(time.Now().Add(2 * time.Second))
+		var dataBuf bytes.Buffer
+		buf := make([]byte, 512)
 		n, err := conn.Read(buf)
 		if err != nil {
-			//			conn.SetDeadline(time.Time{})
 			if err == io.EOF {
 				logger.Warn("%s connection is closed.", conn.RemoteAddr().String())
 			} else {
@@ -46,34 +43,22 @@ func handleTcpConnect(conn net.Conn) {
 			break
 		}
 		dataBuf.Write(buf[:n])
-
 		writeBuf, b := checkPacket(dataBuf.Bytes())
 		if b {
-			g_fileLog.Normal(string(writeBuf))
+			TcpFileWrite.Write(writeBuf)
 			dataBuf.Reset()
 		}
 	}
 }
 
-func checkError(err error) {
-	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
-	}
-}
-
 func StartTcpListen(port int) {
-	hostandip := fmt.Sprintf(":%d", port)
-	//	listener, err := net.Listen("tcp", addr)
-	tcpAddr, err := net.ResolveTCPAddr("tcp", hostandip)
-	checkError(err)
-
-	listener, err := net.ListenTCP("tcp", tcpAddr)
-	checkError(err)
-
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf(":%d", port))
+	util.CheckError(err)
+	listener, err := net.ListenTCP("tcp4", tcpAddr)
+	util.CheckError(err)
 	defer listener.Close()
+	logger.Info("listener for server. address: %s", listener.Addr().String())
 
-	logger.Info("listener for server. local address: %s", listener.Addr().String())
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
