@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 
 	"github.com/zhoufuture/golite/logger"
@@ -20,10 +19,14 @@ func StartUdpListen(udpport int) {
 	for {
 		buf := make([]byte, 512)
 		n, addr, err := udpConn.ReadFromUDP(buf[0:])
-		if err != nil {
-			logger.Warn("%s %s %s.", addr.Network(), addr.String(), err.Error())
+		buf = buf[:n]
+		if err != nil || n == 0 {
+			logger.Warn("%s %s %s, readLen=%d", addr.Network(), addr.String(), err.Error(), n)
 			continue
 		}
-		UdpFileWrite.Write(buf[0:n])
+		if buf[n-1] != byte('\n') {
+			buf = append(buf, '\n')
+		}
+		UdpFileWrite.Write(buf)
 	}
 }
