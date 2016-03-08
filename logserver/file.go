@@ -13,7 +13,7 @@ import (
 
 const (
 	MAXSIZE = (1 << 30)
-	MAXDAYS = 7
+	DAY     = 86400
 )
 
 type FileWriter struct {
@@ -21,20 +21,22 @@ type FileWriter struct {
 	curFileNum int
 	curSize    int
 	curDate    int
+	maxSecond  int64
 	fileName   string
 	pathName   string
 	bufChan    chan []byte
 }
 
-func NewFileWriter(pathname string) (*FileWriter, error) {
+func NewFileWriter(pathname string, maxdays int) (*FileWriter, error) {
 	if len(pathname) == 0 {
 		return nil, errors.New("pathname is null.")
 	}
 
 	fw := &FileWriter{
-		fileName: pathname + "/log",
-		pathName: pathname,
-		bufChan:  make(chan []byte, 1000),
+		fileName:  pathname + "/log",
+		pathName:  pathname,
+		maxSecond: int64(maxdays * DAY),
+		bufChan:   make(chan []byte, 1000),
 	}
 	go fw.Save()
 	return fw, fw.openFile()
@@ -101,7 +103,7 @@ func (fw *FileWriter) backupFile() error {
 
 	fname := ""
 	for err == nil {
-		fname = fmt.Sprintf("%s.%s.%03d", fw.fileName, time.Now().Format("2006-01-02"), fw.curFileNum)
+		fname = fmt.Sprintf("%s.%s.%04d", fw.fileName, time.Now().Format("2006-01-02"), fw.curFileNum)
 		_, err = os.Lstat(fname)
 		fw.curFileNum++
 	}
@@ -131,7 +133,7 @@ func (fw *FileWriter) cleanUp() {
 				logger.Error(e.Error())
 			}
 		}()
-		if !info.IsDir() && info.ModTime().Unix() < (time.Now().Unix()-60*60*24*MAXDAYS) {
+		if !info.IsDir() && info.ModTime().Unix() < (time.Now().Unix()-fw.maxSecond) {
 			if strings.HasPrefix(filepath.Base(path), filepath.Base(fw.fileName)) {
 				os.Remove(path)
 			}

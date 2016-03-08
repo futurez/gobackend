@@ -30,9 +30,9 @@ func checkPacket(buf []byte) ([]byte, bool) {
 
 func handleTcpConnect(conn net.Conn) {
 	defer conn.Close()
+	buf := make([]byte, 512)
 	for {
 		var dataBuf bytes.Buffer
-		buf := make([]byte, 512)
 		n, err := conn.Read(buf)
 		if err != nil {
 			if err == io.EOF {
@@ -45,6 +45,9 @@ func handleTcpConnect(conn net.Conn) {
 		dataBuf.Write(buf[:n])
 		writeBuf, b := checkPacket(dataBuf.Bytes())
 		if b {
+			if writeBuf[len(writeBuf)-1] != byte('\n') {
+				writeBuf = append(writeBuf, '\n')
+			}
 			TcpFileWrite.Write(writeBuf)
 			dataBuf.Reset()
 		}

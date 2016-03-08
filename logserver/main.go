@@ -23,15 +23,16 @@ func main() {
 	udpPort, _ := iniconf.GetInt("logserver.udpport", 20000)
 	tcpfilepath := iniconf.GetString("logserver.tcpfilepath", "/data/tcplog")
 	udpfilepath := iniconf.GetString("logserver.udpfilepath", "/data/udplog")
+	savedays, _ := iniconf.GetInt("logserver.savedays", 7)
 
 	if nettype == "tcp" || nettype == "all" {
-		TcpFileWrite, err = NewFileWriter(tcpfilepath)
+		TcpFileWrite, err = NewFileWriter(tcpfilepath, savedays)
 		util.CheckError(err)
 		go StartTcpListen(tcpPort)
 	}
 
 	if nettype == "udp" || nettype == "all" {
-		UdpFileWrite, err = NewFileWriter(udpfilepath)
+		UdpFileWrite, err = NewFileWriter(udpfilepath, savedays)
 		util.CheckError(err)
 		go StartUdpListen(udpPort)
 	}
